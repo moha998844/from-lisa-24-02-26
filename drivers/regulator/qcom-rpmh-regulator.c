@@ -180,16 +180,27 @@ static int _rpmh_regulator_vrm_set_voltage_sel(struct regulator_dev *rdev,
 		.addr = vreg->addr + RPMH_REGULATOR_REG_VRM_VOLTAGE,
 	};
 	int ret;
+	int volt_uV;
+
+	volt_uV = regulator_list_voltage_linear_range(rdev, selector);
+
+	/* --- UNDERVOLT PATCH START --- */
+	if (vreg->rdesc.name && (strstr(vreg->rdesc.name, "smps") || strstr(vreg->rdesc.name, "smp"))) {
+		if (volt_uV > 600000) {
+			volt_uV -= 20000; /* -20mV offset */
+		}
+	}
+	/* --- UNDERVOLT PATCH END --- */
 
 	/* VRM voltage control register is set with voltage in millivolts. */
-	cmd.data = DIV_ROUND_UP(regulator_list_voltage_linear_range(rdev,
-							selector), 1000);
+	cmd.data = DIV_ROUND_UP(volt_uV, 1000);
 
 	ret = rpmh_regulator_send_request(vreg, &cmd, wait_for_ack);
 	if (!ret)
 		vreg->voltage_selector = selector;
 
 	return ret;
+
 }
 
 static int rpmh_regulator_vrm_set_voltage_sel(struct regulator_dev *rdev,
