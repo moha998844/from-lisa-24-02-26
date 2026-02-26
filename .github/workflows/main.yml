@@ -14,7 +14,7 @@ jobs:
           config: vili_defconfig
           arch: arm64
           aosp-clang: true
-          aosp-clang-version: r522817
+          aosp-clang-version: r510068
          # Add this line below to fix the error
           aosp-gcc: true
           ksu: true
