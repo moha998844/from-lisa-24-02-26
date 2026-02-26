@@ -26,7 +26,7 @@ jobs:
           ksu-version: legacy
 
         
-        extra-make-args: >-
+          extra-make-args: >-
             ["LLVM=1", "LLVM_IAS=1", "dtbs",
             "CONFIG_CC_OPTIMIZE_03=y",
             "CONFIG_SCHED_WALT=y",
@@ -42,4 +42,4 @@ jobs:
             "CONFIG_KPROBES=n",
             "CONFIG_HAVE_KPROBES=y",
             "CONFIG_KPROBE_EVENTS=n"]
-          anykernel3: true
+         anykernel3: true
