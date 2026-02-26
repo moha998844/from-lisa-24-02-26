@@ -18,10 +18,13 @@ jobs:
           other-clang-branch: main
          # Add this line below to fix the error
           aosp-gcc: true
+ 
+         # KernelSU-Next v3 Integration
           ksu: true
           ksu-other: true
-          ksu-url: https://github.com/KernelSU-Next/KernelSU-Next
-          ksu-version: main
+          # Use the RAW script URL to avoid the 404 error
+          ksu-url: https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh
+          ksu-version: next
           # Fixed formatting for the extra-make-args block
           extra-make-args: >-
             ["LLVM=1", "LLVM_IAS=1", "dtbs", "CONFIG_CC_OPTIMIZE_03=y", 
