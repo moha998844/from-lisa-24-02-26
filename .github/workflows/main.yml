@@ -13,19 +13,21 @@ jobs:
           kernel-branch: lineage-23.2
           config: vili_defconfig
           arch: arm64
+          
+          # 1. Toolchain Setup (Manual URL to fix Error 400)
           aosp-clang: false
           other-clang-url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz
           other-clang-branch: main
-         # Add this line below to fix the error
           aosp-gcc: true
- 
-   # KernelSU-Next Legacy for 5.4 Xiaomi Kernels
+
+          # 2. KernelSU-Next Setup (Legacy branch for 5.4 Xiaomi compatibility)
           ksu: true
           ksu-other: true
           ksu-url: https://github.com/rifsxd/KernelSU-Next
           ksu-version: legacy
 
-        
+          # 3. Your 13 Configs + Build Flags
+          # NOTE: CONFIG_KPROBES is set to 'n' to fix the 'redefinition' error.
           extra-make-args: >-
             ["LLVM=1", "LLVM_IAS=1", "dtbs",
             "CONFIG_CC_OPTIMIZE_03=y",
@@ -42,4 +44,5 @@ jobs:
             "CONFIG_KPROBES=n",
             "CONFIG_HAVE_KPROBES=y",
             "CONFIG_KPROBE_EVENTS=n"]
-         anykernel3: true
+            
+          anykernel3: true
