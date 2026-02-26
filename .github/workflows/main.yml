@@ -20,11 +20,13 @@ jobs:
           aosp-gcc: true
  
        # KernelSU-Next Integration
+          # KernelSU-Next v3 Integration
           ksu: true
           ksu-other: true
-          # Use rifsxd as the source; it has the correct setup.sh path
-          ksu-url: https://github.com/rifsxd/KernelSU-Next
-          ksu-version: next
+          # Use the organization repo you found
+          ksu-url: https://github.com/KernelSU-Next/KernelSU-Next
+          # Change this from 'next' to 'dev' to match your link
+          ksu-version: dev
           # Fixed formatting for the extra-make-args block
           extra-make-args: >-
             ["LLVM=1", "LLVM_IAS=1", "dtbs", "CONFIG_CC_OPTIMIZE_03=y", 
