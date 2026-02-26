@@ -14,35 +14,36 @@ jobs:
           config: vili_defconfig
           arch: arm64
           
-          # 1. Toolchain Setup (Manual URL to fix Error 400)
+          # Toolchain Setup
           aosp-clang: false
           other-clang-url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz
           other-clang-branch: main
           aosp-gcc: true
 
-          # 2. KernelSU-Next Setup (Legacy branch for 5.4 Xiaomi compatibility)
+          # KSU-Next Legacy
           ksu: true
           ksu-other: true
           ksu-url: https://github.com/rifsxd/KernelSU-Next
           ksu-version: legacy
 
-          # 3. Your 13 Configs + Build Flags
-          # NOTE: CONFIG_KPROBES is set to 'n' to fix the 'redefinition' error.
+          # INJECT CONFIGS HERE
+          # This runs before the final KSU check
+          pre-build: |
+            echo "CONFIG_KPROBES=y" >> arch/arm64/configs/vili_defconfig
+            echo "CONFIG_HAVE_KPROBES=y" >> arch/arm64/configs/vili_defconfig
+            echo "CONFIG_KPROBE_EVENTS=y" >> arch/arm64/configs/vili_defconfig
+            echo "CONFIG_KSU=y" >> arch/arm64/configs/vili_defconfig
+            echo "CONFIG_KSU_NEXT=y" >> arch/arm64/configs/vili_defconfig
+            echo "CONFIG_CC_OPTIMIZE_03=y" >> arch/arm64/configs/vili_defconfig
+            echo "CONFIG_SCHED_WALT=y" >> arch/arm64/configs/vili_defconfig
+            echo "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y" >> arch/arm64/configs/vili_defconfig
+            echo "CONFIG_WIREGUARD=y" >> arch/arm64/configs/vili_defconfig
+            echo "CONFIG_QCOM_RPMH=y" >> arch/arm64/configs/vili_defconfig
+            echo "CONFIG_REGULATOR_QCOM_RPMH=y" >> arch/arm64/configs/vili_defconfig
+            echo "CONFIG_SECURITY_SELINUX=y" >> arch/arm64/configs/vili_defconfig
+            echo "CONFIG_LTO_CLANG_THIN=y" >> arch/arm64/configs/vili_defconfig
+
           extra-make-args: >-
-            ["LLVM=1", "LLVM_IAS=1", "dtbs",
-            "CONFIG_CC_OPTIMIZE_03=y",
-            "CONFIG_SCHED_WALT=y",
-            "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y",
-            "CONFIG_WIREGUARD=y",
-            "CONFIG_QCOM_RPMH=y",
-            "CONFIG_REGULATOR_QCOM_RPMH=y",
-            "CONFIG_SECURITY_SELINUX=y",
-            "CONFIG_LTO_CLANG_THIN=y",
-            "CONFIG_KSU=y",
-            "CONFIG_KSU_NEXT=y",
-            "CONFIG_KPROBES=y",
-            "CONFIG_HAVE_KPROBES=y",
-            "CONFIG_KPROBE_EVENTS=y",
-            "CONFIG_KSU_KPROBE_HOOK=y"]
+            ["LLVM=1", "LLVM_IAS=1", "dtbs"]
             
           anykernel3: true
