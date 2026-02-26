@@ -13,8 +13,9 @@ jobs:
           kernel-branch: lineage-23.2
           config: vili_defconfig
           arch: arm64
-          aosp-clang: true
-          aosp-clang-version: r510068
+          aosp-clang: false
+          other-clang-url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz
+          other-clang-branch: main
          # Add this line below to fix the error
           aosp-gcc: true
           ksu: true
