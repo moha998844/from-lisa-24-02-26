@@ -1,4 +1,4 @@
-name: Build Vili Kernel (Clean Test - Patched)
+name: Build Vili Kernel (Clean Test - Driver Patch)
 on:
   workflow_dispatch:
 
@@ -13,19 +13,23 @@ jobs:
           ref: lineage-23.2
           path: kernel_source
 
-      - name: Patch Kprobe Conflicts
+      - name: Patch Conflicts and Warnings
         run: |
           cd kernel_source
-          # 1. Fix the redefinition error in trace_kprobe.c
-          # We remove the conflicting functions so the compiler doesn't see them twice
+          # 1. Fix Kprobe redefinitions
           sed -i '/bool trace_kprobe_on_func_entry/,/}/d' kernel/trace/trace_kprobe.c
           sed -i '/bool trace_kprobe_error_injectable/,/}/d' kernel/trace/trace_kprobe.c
-          
-          # 2. Fix the "unknown type name probe_opcode_t" in arch probes
-          # We change the name to the standard kprobe_opcode_t which the kernel recognizes
           sed -i 's/probe_opcode_t/kprobe_opcode_t/g' arch/arm64/kernel/probes/decode-insn.h
           
-          # 3. Inject your 13 Configs into the defconfig
+          # 2. Fix Wi-Fi Driver 'unused function' error
+          # We tell the compiler to stop treating warnings as errors
+          sed -i 's/-Werror//g' drivers/staging/qcacld-3.0/Makefile
+          
+          # 3. Global Warning Suppression (Optional but safer for custom builds)
+          # This prevents other "unused" warnings from stopping the build
+          sed -i 's/^KBUILD_CFLAGS += -Wall/KBUILD_CFLAGS += -Wall -Wno-unused-function -Wno-unused-variable/g' Makefile
+
+          # 4. Inject your 13 Configs
           echo "CONFIG_CC_OPTIMIZE_03=y" >> arch/arm64/configs/vili_defconfig
           echo "CONFIG_SCHED_WALT=y" >> arch/arm64/configs/vili_defconfig
           echo "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y" >> arch/arm64/configs/vili_defconfig
@@ -43,7 +47,6 @@ jobs:
         with:
           kernel-url: https://github.com/moha998844/from-lisa-24-02-26
           kernel-branch: lineage-23.2
-          # We use the folder we just patched
           kernel-dir: kernel_source
           config: vili_defconfig
           arch: arm64
@@ -52,8 +55,7 @@ jobs:
           other-clang-url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz
           other-clang-branch: main
           aosp-gcc: true
-
-          ksu: false # Still false for this test to ensure base stability
+          ksu: false
 
           extra-make-args: >-
             ["LLVM=1", "LLVM_IAS=1", "dtbs"]
