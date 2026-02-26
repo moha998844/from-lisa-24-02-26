@@ -19,12 +19,11 @@ jobs:
          # Add this line below to fix the error
           aosp-gcc: true
  
-        # KernelSU-Next v3 Integration
+       # KernelSU-Next Integration
           ksu: true
           ksu-other: true
-          # Use the BASE repository URL, not the file link
-          ksu-url: https://github.com/KernelSU-Next/KernelSU-Next
-          # Use the 'next' branch where v3 development happens
+          # Use rifsxd as the source; it has the correct setup.sh path
+          ksu-url: https://github.com/rifsxd/KernelSU-Next
           ksu-version: next
           # Fixed formatting for the extra-make-args block
           extra-make-args: >-
