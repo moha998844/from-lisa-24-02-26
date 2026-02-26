@@ -6,44 +6,55 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Kernel Source
+        uses: actions/checkout@v4
+        with:
+          repository: moha998844/from-lisa-24-02-26
+          ref: lineage-23.2
+          path: kernel
+
+      - name: Inject Configs & Patch Source
+        run: |
+          cd kernel
+          # Force the 13 configs into the defconfig
+          echo "CONFIG_KPROBES=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_HAVE_KPROBES=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_KPROBE_EVENTS=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_KSU=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_KSU_NEXT=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_CC_OPTIMIZE_03=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_SCHED_WALT=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_WIREGUARD=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_QCOM_RPMH=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_REGULATOR_QCOM_RPMH=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_SECURITY_SELINUX=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_LTO_CLANG_THIN=y" >> arch/arm64/configs/vili_defconfig
+          
+          # Patch trace_kprobe.c to prevent the redefinition error
+          sed -i '/bool trace_kprobe_on_func_entry/,/}/d' kernel/trace/trace_kprobe.c
+          sed -i '/bool trace_kprobe_error_injectable/,/}/d' kernel/trace/trace_kprobe.c
+
       - name: Build Kernel
         uses: dabao1955/kernel_build_action@main
         with:
           kernel-url: https://github.com/moha998844/from-lisa-24-02-26
           kernel-branch: lineage-23.2
+          # Use local dir since we already checked it out and patched it
+          kernel-dir: kernel
           config: vili_defconfig
           arch: arm64
           
-          # Toolchain Setup
           aosp-clang: false
           other-clang-url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz
           other-clang-branch: main
           aosp-gcc: true
 
-          # KSU-Next Legacy
           ksu: true
           ksu-other: true
           ksu-url: https://github.com/rifsxd/KernelSU-Next
           ksu-version: legacy
 
-          # INJECT CONFIGS HERE
-          # This runs before the final KSU check
-          pre-build: |
-            echo "CONFIG_KPROBES=y" >> arch/arm64/configs/vili_defconfig
-            echo "CONFIG_HAVE_KPROBES=y" >> arch/arm64/configs/vili_defconfig
-            echo "CONFIG_KPROBE_EVENTS=y" >> arch/arm64/configs/vili_defconfig
-            echo "CONFIG_KSU=y" >> arch/arm64/configs/vili_defconfig
-            echo "CONFIG_KSU_NEXT=y" >> arch/arm64/configs/vili_defconfig
-            echo "CONFIG_CC_OPTIMIZE_03=y" >> arch/arm64/configs/vili_defconfig
-            echo "CONFIG_SCHED_WALT=y" >> arch/arm64/configs/vili_defconfig
-            echo "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y" >> arch/arm64/configs/vili_defconfig
-            echo "CONFIG_WIREGUARD=y" >> arch/arm64/configs/vili_defconfig
-            echo "CONFIG_QCOM_RPMH=y" >> arch/arm64/configs/vili_defconfig
-            echo "CONFIG_REGULATOR_QCOM_RPMH=y" >> arch/arm64/configs/vili_defconfig
-            echo "CONFIG_SECURITY_SELINUX=y" >> arch/arm64/configs/vili_defconfig
-            echo "CONFIG_LTO_CLANG_THIN=y" >> arch/arm64/configs/vili_defconfig
-
           extra-make-args: >-
             ["LLVM=1", "LLVM_IAS=1", "dtbs"]
-            
           anykernel3: true
