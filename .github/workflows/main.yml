@@ -15,30 +15,17 @@ jobs:
           arch: arm64
           aosp-clang: true
           aosp-clang-version: r522817
-          
-          # KernelSU-Next v3 Configuration
           ksu: true
           ksu-other: true
           ksu-url: https://github.com/KernelSU-Next/KernelSU-Next
           ksu-version: main
-
-          # Line 25: Fixed array formatting with proper quoting
-          extra-make-args: [
-            "LLVM=1",
-            "LLVM_IAS=1",
-            "dtbs",
-            "CONFIG_CC_OPTIMIZE_03=y",
-            "CONFIG_SCHED_WALT=y",
-            "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y",
-            "CONFIG_WIREGUARD=y",
-            "CONFIG_QCOM_RPMH=y",
-            "CONFIG_REGULATOR_QCOM_RPMH=y",
-            "CONFIG_SECURITY_SELINUX=y",
-            "CONFIG_LTO_CLANG_THIN=y",
-            "CONFIG_KSU=y",
-            "CONFIG_KSU_NEXT=y",
-            "CONFIG_KPROBES=y",
-            "CONFIG_HAVE_KPROBES=y",
-            "CONFIG_KPROBE_EVENTS=y"
-          ]
+          # Fixed formatting for the extra-make-args block
+          extra-make-args: >-
+            ["LLVM=1", "LLVM_IAS=1", "dtbs", "CONFIG_CC_OPTIMIZE_03=y", 
+            "CONFIG_SCHED_WALT=y", "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y", 
+            "CONFIG_WIREGUARD=y", "CONFIG_QCOM_RPMH=y", 
+            "CONFIG_REGULATOR_QCOM_RPMH=y", "CONFIG_SECURITY_SELINUX=y", 
+            "CONFIG_LTO_CLANG_THIN=y", "CONFIG_KSU=y", 
+            "CONFIG_KSU_NEXT=y", "CONFIG_KPROBES=y", 
+            "CONFIG_HAVE_KPROBES=y", "CONFIG_KPROBE_EVENTS=y"]
           anykernel3: true
