@@ -1,4 +1,4 @@
-name: Build Vili Kernel (Clean Test)
+name: Build Vili Kernel (Clean Test - Patched)
 on:
   workflow_dispatch:
 
@@ -6,36 +6,55 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Kernel Source
+        uses: actions/checkout@v4
+        with:
+          repository: moha998844/from-lisa-24-02-26
+          ref: lineage-23.2
+          path: kernel_source
+
+      - name: Patch Kprobe Conflicts
+        run: |
+          cd kernel_source
+          # 1. Fix the redefinition error in trace_kprobe.c
+          # We remove the conflicting functions so the compiler doesn't see them twice
+          sed -i '/bool trace_kprobe_on_func_entry/,/}/d' kernel/trace/trace_kprobe.c
+          sed -i '/bool trace_kprobe_error_injectable/,/}/d' kernel/trace/trace_kprobe.c
+          
+          # 2. Fix the "unknown type name probe_opcode_t" in arch probes
+          # We change the name to the standard kprobe_opcode_t which the kernel recognizes
+          sed -i 's/probe_opcode_t/kprobe_opcode_t/g' arch/arm64/kernel/probes/decode-insn.h
+          
+          # 3. Inject your 13 Configs into the defconfig
+          echo "CONFIG_CC_OPTIMIZE_03=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_SCHED_WALT=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_WIREGUARD=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_QCOM_RPMH=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_REGULATOR_QCOM_RPMH=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_SECURITY_SELINUX=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_LTO_CLANG_THIN=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_KPROBES=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_HAVE_KPROBES=y" >> arch/arm64/configs/vili_defconfig
+          echo "CONFIG_KPROBE_EVENTS=y" >> arch/arm64/configs/vili_defconfig
+
       - name: Build Kernel
         uses: dabao1955/kernel_build_action@main
         with:
           kernel-url: https://github.com/moha998844/from-lisa-24-02-26
           kernel-branch: lineage-23.2
+          # We use the folder we just patched
+          kernel-dir: kernel_source
           config: vili_defconfig
           arch: arm64
           
-          # Toolchain Setup
           aosp-clang: false
           other-clang-url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz
           other-clang-branch: main
           aosp-gcc: true
 
-          # KSU-Next DISABLED for this boot test
-          ksu: false
+          ksu: false # Still false for this test to ensure base stability
 
-          # This runs inside the action after cloning but before building
           extra-make-args: >-
-            ["LLVM=1", "LLVM_IAS=1", "dtbs",
-            "CONFIG_CC_OPTIMIZE_03=y",
-            "CONFIG_SCHED_WALT=y",
-            "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y",
-            "CONFIG_WIREGUARD=y",
-            "CONFIG_QCOM_RPMH=y",
-            "CONFIG_REGULATOR_QCOM_RPMH=y",
-            "CONFIG_SECURITY_SELINUX=y",
-            "CONFIG_LTO_CLANG_THIN=y",
-            "CONFIG_KPROBES=y",
-            "CONFIG_HAVE_KPROBES=y",
-            "CONFIG_KPROBE_EVENTS=y"]
-            
+            ["LLVM=1", "LLVM_IAS=1", "dtbs"]
           anykernel3: true
