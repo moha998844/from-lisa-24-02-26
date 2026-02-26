@@ -16,12 +16,13 @@ jobs:
           aosp-clang: true
           aosp-clang-version: r522817
           
-          # Force KernelSU-Next v3
+          # KernelSU-Next v3 Configuration
           ksu: true
           ksu-other: true
           ksu-url: https://github.com/KernelSU-Next/KernelSU-Next
-          ksu-version: main # This pulls the latest v3.x code
-          
+          ksu-version: main
+
+          # Line 25: Fixed array formatting with proper quoting
           extra-make-args: [
             "LLVM=1",
             "LLVM_IAS=1",
