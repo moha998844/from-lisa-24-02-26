@@ -1,4 +1,4 @@
-name: Build Vili Kernel (Clean Test - Driver Patch)
+name: Build Vili Kernel (Clean Test - Final Patch)
 on:
   workflow_dispatch:
 
@@ -16,20 +16,23 @@ jobs:
       - name: Patch Conflicts and Warnings
         run: |
           cd kernel_source
-          # 1. Fix Kprobe redefinitions
+          # 1. Kprobe fixes (as before)
           sed -i '/bool trace_kprobe_on_func_entry/,/}/d' kernel/trace/trace_kprobe.c
           sed -i '/bool trace_kprobe_error_injectable/,/}/d' kernel/trace/trace_kprobe.c
           sed -i 's/probe_opcode_t/kprobe_opcode_t/g' arch/arm64/kernel/probes/decode-insn.h
           
-          # 2. Fix Wi-Fi Driver 'unused function' error
-          # We tell the compiler to stop treating warnings as errors
-          sed -i 's/-Werror//g' drivers/staging/qcacld-3.0/Makefile
+          # 2. Wi-Fi Driver - Bruteforce disable Werror
+          # This finds every instance of -Werror in the wifi driver and removes it
+          find drivers/staging/qcacld-3.0 -name "Makefile" -o -name "Kbuild" | xargs sed -i 's/-Werror//g'
           
-          # 3. Global Warning Suppression (Optional but safer for custom builds)
-          # This prevents other "unused" warnings from stopping the build
-          sed -i 's/^KBUILD_CFLAGS += -Wall/KBUILD_CFLAGS += -Wall -Wno-unused-function -Wno-unused-variable/g' Makefile
+          # 3. Comment out the specific unused function causing the crash
+          # We use sed to find the line and wrap it in a way the compiler ignores it
+          sed -i 's/static int  wlan_hdd_state_ctrl_param_create(void)/static int __maybe_unused wlan_hdd_state_ctrl_param_create(void)/g' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
 
-          # 4. Inject your 13 Configs
+          # 4. Global Warning Suppression
+          sed -i 's/^KBUILD_CFLAGS += -Wall/KBUILD_CFLAGS += -Wall -Wno-unused-function -Wno-unused-variable -Wno-fortify-source/g' Makefile
+
+          # 5. Inject your 13 Configs
           echo "CONFIG_CC_OPTIMIZE_03=y" >> arch/arm64/configs/vili_defconfig
           echo "CONFIG_SCHED_WALT=y" >> arch/arm64/configs/vili_defconfig
           echo "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y" >> arch/arm64/configs/vili_defconfig
@@ -50,13 +53,11 @@ jobs:
           kernel-dir: kernel_source
           config: vili_defconfig
           arch: arm64
-          
           aosp-clang: false
           other-clang-url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz
           other-clang-branch: main
           aosp-gcc: true
           ksu: false
-
           extra-make-args: >-
             ["LLVM=1", "LLVM_IAS=1", "dtbs"]
           anykernel3: true
