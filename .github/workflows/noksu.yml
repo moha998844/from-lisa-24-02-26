@@ -1,4 +1,4 @@
-name: Build Vili Kernel (Safe Mode - URL Fix)
+name: Build Vili Kernel (Toolchain Fix)
 on:
   workflow_dispatch:
 
@@ -17,7 +17,7 @@ jobs:
         run: |
           cd kernel_source
           
-          # 1. Mandatory Kprobe Fixes (Required for KSU)
+          # 1. Mandatory Kprobe Fixes
           sed -i '/bool trace_kprobe_on_func_entry/,/}/d' kernel/trace/trace_kprobe.c
           sed -i '/bool trace_kprobe_error_injectable/,/}/d' kernel/trace/trace_kprobe.c
           sed -i 's/probe_opcode_t/kprobe_opcode_t/g' arch/arm64/kernel/probes/decode-insn.h
@@ -25,7 +25,7 @@ jobs:
           # 2. Global Werror Stripping
           find . -name "Makefile" -o -name "Kbuild" | xargs sed -i 's/-Werror//g'
 
-          # 3. Inject Configs (No LTO / No O3)
+          # 3. Inject Configs (Stability Focus)
           {
             echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y"
             echo "CONFIG_LTO_NONE=y"
@@ -51,9 +51,9 @@ jobs:
           kernel-dir: kernel_source
           config: vili_defconfig
           arch: arm64
-          # Fix for Error 400: Disable automatic AOSP clang and provide direct URL
           aosp-clang: false
-          other-clang-url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz
+          # Switching to ZyC Clang - Extremely reliable for GitHub Actions
+          other-clang-url: https://github.com/ZyCromerZ/Clang/releases/download/17.0.0-20230522-release/Clang-17.0.0-20230522.tar.gz
           other-clang-branch: main
           aosp-gcc: true
           ksu: false
