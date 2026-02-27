@@ -11,7 +11,7 @@ jobs:
         with:
           repository: moha998844/from-lisa-24-02-26
           ref: lineage-23.2
-          path: kernel
+          
 
       - name: Inject Configs & Patch Source
         run: |
