@@ -1,4 +1,4 @@
-name: Build Vili Kernel (Bruteforce Patch)
+name: Build Vili Kernel (Surgical Wi-Fi Patch)
 on:
   workflow_dispatch:
 
@@ -16,24 +16,22 @@ jobs:
       - name: Patch Conflicts and Warnings
         run: |
           cd kernel_source
-          # 1. Kprobe fixes (Standard)
+          # 1. Kprobe fixes (Redefinition errors)
           sed -i '/bool trace_kprobe_on_func_entry/,/}/d' kernel/trace/trace_kprobe.c
           sed -i '/bool trace_kprobe_error_injectable/,/}/d' kernel/trace/trace_kprobe.c
           sed -i 's/probe_opcode_t/kprobe_opcode_t/g' arch/arm64/kernel/probes/decode-insn.h
           
-          # 2. Wi-Fi Driver - SURGICAL REMOVAL
-          # We search for the function and delete the entire block (about 5 lines)
-          # This is the line: static int wlan_hdd_state_ctrl_param_create(void)
-          # We delete the line itself and the following brackets/content
-          sed -i '/static int  wlan_hdd_state_ctrl_param_create(void)/,+5d' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
+          # 2. Wi-Fi Driver - Surgical attribute injection
+          # We add __maybe_unused so the compiler stops complaining about it being unused
+          sed -i 's/static int  wlan_hdd_state_ctrl_param_create(void)/static int __maybe_unused wlan_hdd_state_ctrl_param_create(void)/g' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
           
-          # 3. Bruteforce remove -Werror from every single Makefile in the whole tree
-          find . -name "Makefile" -o -name "Kbuild" | xargs sed -i 's/-Werror//g'
+          # 3. Force-disable Werror in the techpack and staging areas
+          # These sub-folders often ignore the main Makefile flags
+          find techpack/ drivers/staging/ -name "Makefile" | xargs sed -i 's/-Werror//g'
+          find techpack/ drivers/staging/ -name "Kbuild" | xargs sed -i 's/-Werror//g'
 
-          # 4. Global Warning Suppression
-          sed -i 's/^KBUILD_CFLAGS += -Wall/KBUILD_CFLAGS += -Wall -Wno-unused-function -Wno-unused-variable -Wno-fortify-source/g' Makefile
-
-          # 5. Inject your 13 Configs (Stored Prefs)
+          # 4. Inject your 13 Configs (Stored Prefs)
+          # Note: We are ensuring CC_OPTIMIZE_03 is set as you requested
           echo "CONFIG_CC_OPTIMIZE_03=y" >> arch/arm64/configs/vili_defconfig
           echo "CONFIG_SCHED_WALT=y" >> arch/arm64/configs/vili_defconfig
           echo "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y" >> arch/arm64/configs/vili_defconfig
