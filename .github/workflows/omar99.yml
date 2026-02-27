@@ -13,27 +13,27 @@ jobs:
           kernel-branch: lineage-23.2-ksu
           config: vili_merged_defconfig
           arch: arm64
-          # Standard AOSP Clang r522817 is optimal for Android 16 QPR2
+          # Use Clang r522817 (Standard for Android 16 QPR2)
           aosp-clang: false
           other-clang-url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz
           other-clang-branch: main
           aosp-gcc: true
-          ksu: false # Branch already has KSU; we enable via defconfig
+          ksu: false # Disabled here because we inject CONFIG_KSU manually below
           extra-make-args: >-
             ["LLVM=1", "LLVM_IAS=1", "dtbs"]
           
           patch-cmds: |
-            # 1. Merge the fragments (Skeleton + Xiaomi + Vili)
+            # 1. Merge Qualcomm Fragments (Base + Xiaomi Common + Vili Specific)
             ARCH=arm64 ./scripts/kconfig/merge_config.sh -m -O arch/arm64/configs/ \
               arch/arm64/configs/vendor/lahaina-qgki_defconfig \
               arch/arm64/configs/vendor/xiaomi_QGKI.config \
               arch/arm64/configs/vendor/vili_QGKI.config
             
-            # Move the result to the config name specified above
+            # Move the generated .config to the target name
             mv arch/arm64/configs/.config arch/arm64/configs/vili_merged_defconfig
 
-            # 2. Inject your 13 Mandatory Configs
-            # We use 'sed' to remove existing entries before appending to avoid conflicts
+            # 2. Clean and Inject your 13 Mandatory Configs
+            # This ensures no duplicates or overrides occur
             CONFIG_LIST=(
               "CONFIG_CC_OPTIMIZE_03" "CONFIG_SCHED_WALT" "CONFIG_CPU_FREQ_GOV_SCHEDUTIL"
               "CONFIG_WIREGUARD" "CONFIG_QCOM_RPMH" "CONFIG_REGULATOR_QCOM_RPMH"
@@ -61,14 +61,14 @@ jobs:
               echo "CONFIG_WERROR=n"
             } >> arch/arm64/configs/vili_merged_defconfig
 
-            # 3. Apply Source Fixes (Wi-Fi Driver & Kprobes)
-            # This prevents the 'unused function' error in qcacld-3.0
+            # 3. Apply Source Patches for Compiler Compatibility
+            # Silence the unused function error in Wi-Fi driver (common with O3/LTO)
             sed -i 's/static int  wlan_hdd_state_ctrl_param_create(void)/static int __maybe_unused wlan_hdd_state_ctrl_param_create(void)/g' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
             
-            # Global silence for -Werror to ensure LTO/O3 don't crash the build
+            # Global silence for -Werror
             find . -name "Makefile" -o -name "Kbuild" | xargs sed -i 's/-Werror//g'
             
-            # Kprobe Redefinition Fix
+            # Fix Kprobe redefinitions for modern Clang
             sed -i '/bool trace_kprobe_on_func_entry/,/}/d' kernel/trace/trace_kprobe.c
             sed -i '/bool trace_kprobe_error_injectable/,/}/d' kernel/trace/trace_kprobe.c
             
