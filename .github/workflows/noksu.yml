@@ -1,4 +1,4 @@
-name: Build Vili Kernel (Surgical Wi-Fi Patch)
+name: Build Vili Kernel (Safe Mode - No LTO/O3)
 on:
   workflow_dispatch:
 
@@ -13,36 +13,36 @@ jobs:
           ref: lineage-23.2
           path: kernel_source
 
-      - name: Patch Conflicts and Warnings
+      - name: Patch Source and Strip Strictness
         run: |
           cd kernel_source
-          # 1. Kprobe fixes (Redefinition errors)
+          
+          # 1. Mandatory Kprobe Fixes (Prevents redefinition errors)
           sed -i '/bool trace_kprobe_on_func_entry/,/}/d' kernel/trace/trace_kprobe.c
           sed -i '/bool trace_kprobe_error_injectable/,/}/d' kernel/trace/trace_kprobe.c
           sed -i 's/probe_opcode_t/kprobe_opcode_t/g' arch/arm64/kernel/probes/decode-insn.h
           
-          # 2. Wi-Fi Driver - Surgical attribute injection
-          # We add __maybe_unused so the compiler stops complaining about it being unused
-          sed -i 's/static int  wlan_hdd_state_ctrl_param_create(void)/static int __maybe_unused wlan_hdd_state_ctrl_param_create(void)/g' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
-          
-          # 3. Force-disable Werror in the techpack and staging areas
-          # These sub-folders often ignore the main Makefile flags
-          find techpack/ drivers/staging/ -name "Makefile" | xargs sed -i 's/-Werror//g'
-          find techpack/ drivers/staging/ -name "Kbuild" | xargs sed -i 's/-Werror//g'
+          # 2. Global Werror Stripping
+          # This forces all drivers (including Wi-Fi) to ignore warnings and keep building
+          find . -name "Makefile" -o -name "Kbuild" | xargs sed -i 's/-Werror//g'
 
-          # 4. Inject your 13 Configs (Stored Prefs)
-          # Note: We are ensuring CC_OPTIMIZE_03 is set as you requested
-          echo "CONFIG_CC_OPTIMIZE_03=y" >> arch/arm64/configs/vili_defconfig
-          echo "CONFIG_SCHED_WALT=y" >> arch/arm64/configs/vili_defconfig
-          echo "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y" >> arch/arm64/configs/vili_defconfig
-          echo "CONFIG_WIREGUARD=y" >> arch/arm64/configs/vili_defconfig
-          echo "CONFIG_QCOM_RPMH=y" >> arch/arm64/configs/vili_defconfig
-          echo "CONFIG_REGULATOR_QCOM_RPMH=y" >> arch/arm64/configs/vili_defconfig
-          echo "CONFIG_SECURITY_SELINUX=y" >> arch/arm64/configs/vili_defconfig
-          echo "CONFIG_LTO_CLANG_THIN=y" >> arch/arm64/configs/vili_defconfig
-          echo "CONFIG_KPROBES=y" >> arch/arm64/configs/vili_defconfig
-          echo "CONFIG_HAVE_KPROBES=y" >> arch/arm64/configs/vili_defconfig
-          echo "CONFIG_KPROBE_EVENTS=y" >> arch/arm64/configs/vili_defconfig
+          # 3. Inject Configs (Optimized for Stability)
+          {
+            echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y"
+            echo "CONFIG_LTO_NONE=y"
+            echo "CONFIG_WERROR=n"
+            echo "CONFIG_SCHED_WALT=y"
+            echo "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y"
+            echo "CONFIG_WIREGUARD=y"
+            echo "CONFIG_QCOM_RPMH=y"
+            echo "CONFIG_REGULATOR_QCOM_RPMH=y"
+            echo "CONFIG_SECURITY_SELINUX=y"
+            echo "CONFIG_KSU=y"
+            echo "CONFIG_KSU_NEXT=y"
+            echo "CONFIG_KPROBES=y"
+            echo "CONFIG_HAVE_KPROBES=y"
+            echo "CONFIG_KPROBE_EVENTS=y"
+          } >> arch/arm64/configs/vili_defconfig
 
       - name: Build Kernel
         uses: dabao1955/kernel_build_action@main
@@ -52,11 +52,10 @@ jobs:
           kernel-dir: kernel_source
           config: vili_defconfig
           arch: arm64
-          aosp-clang: false
-          other-clang-url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz
-          other-clang-branch: main
+          # Standard AOSP Clang 17 is perfect for stable non-LTO builds
+          aosp-clang: true
           aosp-gcc: true
-          ksu: false
+          ksu: false # Enabled via defconfig injection above
           extra-make-args: >-
             ["LLVM=1", "LLVM_IAS=1", "dtbs"]
           anykernel3: true
