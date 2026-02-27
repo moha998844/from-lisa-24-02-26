@@ -1,4 +1,4 @@
-name: Build 0mar99 Vili (Final Path Fix)
+name: Build Vili (Branch: main)
 on:
   workflow_dispatch:
 
@@ -6,67 +6,58 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Kernel Source
+        uses: actions/checkout@v4
+        with:
+          repository: Santhanabalan/android_kernel_xiaomi_sm8350
+          ref: main
+          path: kernel-source
+
+      - name: Apply Configs and KernelSU-Next
+        run: |
+          cd kernel-source
+          
+          # 1. Integrate KernelSU-Next (Since it's not in the 'main' branch)
+          curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s next
+          
+          # 2. Inject your 13 Mandatory Configs
+          {
+            echo "CONFIG_CC_OPTIMIZE_03=y"
+            echo "CONFIG_SCHED_WALT=y"
+            echo "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y"
+            echo "CONFIG_WIREGUARD=y"
+            echo "CONFIG_QCOM_RPMH=y"
+            echo "CONFIG_REGULATOR_QCOM_RPMH=y"
+            echo "CONFIG_SECURITY_SELINUX=y"
+            echo "CONFIG_LTO_CLANG_THIN=y"
+            echo "CONFIG_KSU=y"
+            echo "CONFIG_KSU_NEXT=y"
+            echo "CONFIG_KPROBES=y"
+            echo "CONFIG_HAVE_KPROBES=y"
+            echo "CONFIG_KPROBE_EVENTS=y"
+            echo "CONFIG_WERROR=n"
+          } >> arch/arm64/configs/vili_defconfig
+
+          # 3. Source Compatibility Fixes
+          sed -i 's/static int  wlan_hdd_state_ctrl_param_create(void)/static int __maybe_unused wlan_hdd_state_ctrl_param_create(void)/g' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
+          find . -name "Makefile" -o -name "Kbuild" | xargs sed -i 's/-Werror//g'
+          sed -i '/bool trace_kprobe_on_func_entry/,/}/d' kernel/trace/trace_kprobe.c
+          sed -i '/bool trace_kprobe_error_injectable/,/}/d' kernel/trace/trace_kprobe.c
+
       - name: Build Kernel
         uses: dabao1955/kernel_build_action@main
         with:
-          kernel-url: https://github.com/AOSP-for-vili/android_kernel_xiaomi_sm8350
-          kernel-branch: lineage-23.2-ksu
-          # The Action will create this file inside the source tree
-          config: vili_merged_defconfig
+          kernel-url: https://github.com/Santhanabalan/android_kernel_xiaomi_sm8350
+          kernel-dir: kernel-source
+          kernel-branch: main
+          config: vili_defconfig
           arch: arm64
           aosp-clang: false
-          # Android 16 QPR2 Recommended Clang Toolchain
+          # Stable Android 16 Toolchain
           other-clang-url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz
           other-clang-branch: main
           aosp-gcc: true
-          ksu: false 
+          ksu: false # Handled via the setup.sh script above
           extra-make-args: >-
-            ["LLVM=1", "LLVM_IAS=1", "dtbs"]
-          
-          # This block runs INSIDE the kernel source directory after cloning
-          patch-cmds: |
-            # 1. Merge Qualcomm Fragments
-            ARCH=arm64 ./scripts/kconfig/merge_config.sh -m -O arch/arm64/configs/ \
-              arch/arm64/configs/vendor/lahaina-qgki_defconfig \
-              arch/arm64/configs/vendor/xiaomi_QGKI.config \
-              arch/arm64/configs/vendor/vili_QGKI.config
-            
-            mv arch/arm64/configs/.config arch/arm64/configs/vili_merged_defconfig
-
-            # 2. Inject your 13 Mandatory Configs
-            # Clear any existing lines first to prevent duplicates
-            CONFIGS=(
-              "CONFIG_CC_OPTIMIZE_03" "CONFIG_SCHED_WALT" "CONFIG_CPU_FREQ_GOV_SCHEDUTIL"
-              "CONFIG_WIREGUARD" "CONFIG_QCOM_RPMH" "CONFIG_REGULATOR_QCOM_RPMH"
-              "CONFIG_SECURITY_SELINUX" "CONFIG_LTO_CLANG_THIN" "CONFIG_KSU"
-              "CONFIG_KSU_NEXT" "CONFIG_KPROBES" "CONFIG_HAVE_KPROBES" "CONFIG_KPROBE_EVENTS"
-            )
-            for c in "${CONFIGS[@]}"; do sed -i "/$c/d" arch/arm64/configs/vili_merged_defconfig; done
-
-            {
-              echo "CONFIG_CC_OPTIMIZE_03=y"
-              echo "CONFIG_SCHED_WALT=y"
-              echo "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y"
-              echo "CONFIG_WIREGUARD=y"
-              echo "CONFIG_QCOM_RPMH=y"
-              echo "CONFIG_REGULATOR_QCOM_RPMH=y"
-              echo "CONFIG_SECURITY_SELINUX=y"
-              echo "CONFIG_LTO_CLANG_THIN=y"
-              echo "CONFIG_KSU=y"
-              echo "CONFIG_KSU_NEXT=y"
-              echo "CONFIG_KPROBES=y"
-              echo "CONFIG_HAVE_KPROBES=y"
-              echo "CONFIG_KPROBE_EVENTS=y"
-              echo "CONFIG_WERROR=n"
-            } >> arch/arm64/configs/vili_merged_defconfig
-
-            # 3. Source Fixes
-            # Wi-Fi __maybe_unused patch
-            sed -i 's/static int  wlan_hdd_state_ctrl_param_create(void)/static int __maybe_unused wlan_hdd_state_ctrl_param_create(void)/g' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
-            # Global -Werror removal
-            find . -name "Makefile" -o -name "Kbuild" | xargs sed -i 's/-Werror//g'
-            # Tracepoint redefinition fix for Clang 19/20
-            sed -i '/bool trace_kprobe_on_func_entry/,/}/d' kernel/trace/trace_kprobe.c
-            sed -i '/bool trace_kprobe_error_injectable/,/}/d' kernel/trace/trace_kprobe.c
-
+            ["LLVM=1", "LLVM_IAS=1", "KBUILD_BUILD_USER=@ravindu644", "dtbs"]
           anykernel3: true
