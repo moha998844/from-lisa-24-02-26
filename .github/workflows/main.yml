@@ -1,4 +1,4 @@
-name: Build Vili SuKSU (Clang Fix)
+name: Build Vili SuKSU (Final Path & Input Fix)
 on:
   workflow_dispatch:
 
@@ -6,45 +6,55 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Kernel Source
+        uses: actions/checkout@v4
+        with:
+          repository: Santhanabalan/android_kernel_xiaomi_sm8350
+          ref: main-suki
+          path: kernel-source # Checkout into a specific named folder
+
+      - name: Apply Configs and Patches
+        run: |
+          cd kernel-source
+          
+          # 1. Inject your 13 Mandatory Configs
+          {
+            echo "CONFIG_CC_OPTIMIZE_03=y"
+            echo "CONFIG_SCHED_WALT=y"
+            echo "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y"
+            echo "CONFIG_WIREGUARD=y"
+            echo "CONFIG_QCOM_RPMH=y"
+            echo "CONFIG_REGULATOR_QCOM_RPMH=y"
+            echo "CONFIG_SECURITY_SELINUX=y"
+            echo "CONFIG_LTO_CLANG_THIN=y"
+            echo "CONFIG_KSU=y"
+            echo "CONFIG_KSU_NEXT=y"
+            echo "CONFIG_KPROBES=y"
+            echo "CONFIG_HAVE_KPROBES=y"
+            echo "CONFIG_KPROBE_EVENTS=y"
+            echo "CONFIG_WERROR=n"
+          } >> arch/arm64/configs/vili_defconfig
+
+          # 2. Source Compatibility Fixes
+          sed -i 's/static int  wlan_hdd_state_ctrl_param_create(void)/static int __maybe_unused wlan_hdd_state_ctrl_param_create(void)/g' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
+          find . -name "Makefile" -o -name "Kbuild" | xargs sed -i 's/-Werror//g'
+          sed -i '/bool trace_kprobe_on_func_entry/,/}/d' kernel/trace/trace_kprobe.c
+          sed -i '/bool trace_kprobe_error_injectable/,/}/d' kernel/trace/trace_kprobe.c
+
       - name: Build Kernel
         uses: dabao1955/kernel_build_action@main
         with:
+          # Tell the action NOT to clone, but use the local directory we just patched
           kernel-url: https://github.com/Santhanabalan/android_kernel_xiaomi_sm8350
+          kernel-dir: kernel-source
           kernel-branch: main-suki
           config: vili_defconfig
           arch: arm64
           aosp-clang: false
-          # Updated to a stable, direct-link AOSP Clang to avoid 400 errors
           other-clang-url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz
           other-clang-branch: main
           aosp-gcc: true
           ksu: false 
           extra-make-args: >-
             ["LLVM=1", "LLVM_IAS=1", "KBUILD_BUILD_USER=@ravindu644", "dtbs"]
-          
-          patch-cmds: |
-            # 1. Inject your 13 Mandatory Configs
-            {
-              echo "CONFIG_CC_OPTIMIZE_03=y"
-              echo "CONFIG_SCHED_WALT=y"
-              echo "CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y"
-              echo "CONFIG_WIREGUARD=y"
-              echo "CONFIG_QCOM_RPMH=y"
-              echo "CONFIG_REGULATOR_QCOM_RPMH=y"
-              echo "CONFIG_SECURITY_SELINUX=y"
-              echo "CONFIG_LTO_CLANG_THIN=y"
-              echo "CONFIG_KSU=y"
-              echo "CONFIG_KSU_NEXT=y"
-              echo "CONFIG_KPROBES=y"
-              echo "CONFIG_HAVE_KPROBES=y"
-              echo "CONFIG_KPROBE_EVENTS=y"
-              echo "CONFIG_WERROR=n"
-            } >> arch/arm64/configs/vili_defconfig
-
-            # 2. Source Fixes
-            sed -i 's/static int  wlan_hdd_state_ctrl_param_create(void)/static int __maybe_unused wlan_hdd_state_ctrl_param_create(void)/g' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
-            find . -name "Makefile" -o -name "Kbuild" | xargs sed -i 's/-Werror//g'
-            sed -i '/bool trace_kprobe_on_func_entry/,/}/d' kernel/trace/trace_kprobe.c
-            sed -i '/bool trace_kprobe_error_injectable/,/}/d' kernel/trace/trace_kprobe.c
-            
           anykernel3: true
