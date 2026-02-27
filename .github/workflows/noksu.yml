@@ -1,4 +1,4 @@
-name: Build Vili Kernel (Safe Mode - No LTO/O3)
+name: Build Vili Kernel (Safe Mode - URL Fix)
 on:
   workflow_dispatch:
 
@@ -17,16 +17,15 @@ jobs:
         run: |
           cd kernel_source
           
-          # 1. Mandatory Kprobe Fixes (Prevents redefinition errors)
+          # 1. Mandatory Kprobe Fixes (Required for KSU)
           sed -i '/bool trace_kprobe_on_func_entry/,/}/d' kernel/trace/trace_kprobe.c
           sed -i '/bool trace_kprobe_error_injectable/,/}/d' kernel/trace/trace_kprobe.c
           sed -i 's/probe_opcode_t/kprobe_opcode_t/g' arch/arm64/kernel/probes/decode-insn.h
           
           # 2. Global Werror Stripping
-          # This forces all drivers (including Wi-Fi) to ignore warnings and keep building
           find . -name "Makefile" -o -name "Kbuild" | xargs sed -i 's/-Werror//g'
 
-          # 3. Inject Configs (Optimized for Stability)
+          # 3. Inject Configs (No LTO / No O3)
           {
             echo "CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y"
             echo "CONFIG_LTO_NONE=y"
@@ -52,10 +51,12 @@ jobs:
           kernel-dir: kernel_source
           config: vili_defconfig
           arch: arm64
-          # Standard AOSP Clang 17 is perfect for stable non-LTO builds
-          aosp-clang: true
+          # Fix for Error 400: Disable automatic AOSP clang and provide direct URL
+          aosp-clang: false
+          other-clang-url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747c.tar.gz
+          other-clang-branch: main
           aosp-gcc: true
-          ksu: false # Enabled via defconfig injection above
+          ksu: false
           extra-make-args: >-
             ["LLVM=1", "LLVM_IAS=1", "dtbs"]
           anykernel3: true
