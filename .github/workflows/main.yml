@@ -1,4 +1,4 @@
-name: Build Vili SuKSU (Santhanabalan Source)
+name: Build Vili SuKSU (Clang Fix)
 on:
   workflow_dispatch:
 
@@ -13,17 +13,17 @@ jobs:
           kernel-branch: main-suki
           config: vili_defconfig
           arch: arm64
-          # Latest AOSP Clang 20 (r536215) for Android 16 QPR2
           aosp-clang: false
-          other-clang-url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r536215.tar.gz
+          # Updated to a stable, direct-link AOSP Clang to avoid 400 errors
+          other-clang-url: https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r522817.tar.gz
           other-clang-branch: main
           aosp-gcc: true
-          ksu: false # Integrated in source, enabled via defconfig
+          ksu: false 
           extra-make-args: >-
             ["LLVM=1", "LLVM_IAS=1", "KBUILD_BUILD_USER=@ravindu644", "dtbs"]
           
           patch-cmds: |
-            # 1. Inject your 13 Mandatory Configs into vili_defconfig
+            # 1. Inject your 13 Mandatory Configs
             {
               echo "CONFIG_CC_OPTIMIZE_03=y"
               echo "CONFIG_SCHED_WALT=y"
@@ -41,14 +41,9 @@ jobs:
               echo "CONFIG_WERROR=n"
             } >> arch/arm64/configs/vili_defconfig
 
-            # 2. Source Compatibility Fixes for Clang 20
-            # Resolve Wi-Fi driver unused function error
+            # 2. Source Fixes
             sed -i 's/static int  wlan_hdd_state_ctrl_param_create(void)/static int __maybe_unused wlan_hdd_state_ctrl_param_create(void)/g' drivers/staging/qcacld-3.0/core/hdd/src/wlan_hdd_main.c
-            
-            # Recursive removal of -Werror (Essential for Clang 20's strict warnings)
             find . -name "Makefile" -o -name "Kbuild" | xargs sed -i 's/-Werror//g'
-            
-            # Fix Kprobe tracepoint redefinitions
             sed -i '/bool trace_kprobe_on_func_entry/,/}/d' kernel/trace/trace_kprobe.c
             sed -i '/bool trace_kprobe_error_injectable/,/}/d' kernel/trace/trace_kprobe.c
             
